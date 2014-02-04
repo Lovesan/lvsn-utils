@@ -37,8 +37,10 @@
     (make-pathname :defaults path
                    :name nil
                    :type nil
-                   :directory (append (pathname-directory path)
-                                      (list (pathname-name path))))
+                   :directory (if (endp (pathname-directory path))
+                                (list :relative (pathname-name path))
+                                (append (pathname-directory path)
+                                        (list (pathname-name path)))))
     (make-pathname :defaults path
                    :name nil
                    :type nil)))

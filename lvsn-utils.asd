@@ -27,7 +27,7 @@
   :maintainer "Dmitry Ignatiev <lovesan.ru at gmail.com>"
   :licence "MIT"
   :version "0.0.1"
-  :depends-on (#:sb-md5 #:sb-cltl2 #:cl-ppcre)
+  :depends-on (#:sb-md5 #:sb-cltl2 #:cl-ppcre #:split-sequence)
   :components ((:module "src"
                 :serial t
                 :components ((:file "package")
