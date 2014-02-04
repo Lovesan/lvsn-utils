@@ -26,7 +26,12 @@
 
 (defhelper mkpathname (path)
   (declare (type pathname-designator path))
-  (pathname path))
+  (let ((path (pathname path)))
+    ;; workaround for strange sbcl behavior
+    (if (and (string= "." (pathname-name path))
+             (string= "" (pathname-type path)))
+      (pathname (format nil "~a/" path))
+      path)))
 
 (define-modify-macro mkpathnamef () mkpathname)
 
@@ -79,7 +84,7 @@
 
 (defun cd (path)
   (declare (type pathname-designator path))
-  (setf *default-pathname-defaults* (dirpath path)))
+  (setf *default-pathname-defaults* (truename (dirpath path))))
 
 (defun dirwalk (function &key (path (cwd))
                               (pattern "*.*")
@@ -121,20 +126,24 @@
   `(with-output-to-nil (*standard-error*)
      ,@body))
 
-(defmacro with-new-file ((var name &key (external-format :default))
+(defmacro with-new-file ((var name &key (external-format :default)
+                                        (element-type ''character))
                          &body body)
   `(with-open-file (,var ,name :direction :output
                                :if-exists :supersede
                                :if-does-not-exist :create
-                               :external-format ,external-format)
+                               :external-format ,external-format
+                               :element-type ,element-type)
      ,@body))
 
-(defmacro with-append-file ((var name &key (external-format :default))
+(defmacro with-append-file ((var name &key (external-format :default)
+                                           (element-type ''character))
                             &body body)
   `(with-open-file (,var ,name :direction :output
                                :if-exists :append
                                :if-does-not-exist :create
-                               :external-format ,external-format)
+                               :external-format ,external-format
+                               :element-type ,element-type)
      ,@body))
 
 (defun file-to-bytes (filename &key (start 0) end)
@@ -194,6 +203,73 @@
                             :buffer-size buffer-size
                             :external-format external-format)
    :trim trim))
+
+(defun lines-to-string (lines)
+  (declare (type list lines))
+  (format nil "~{~a~^~%~}" lines))
+
+(defun bytes-to-file (bytes file &key (append t)
+                                      (start 0)
+                                      end)
+  (declare (type (vector octet) bytes)
+           (type (or stream string pathname) file)
+           (type index start)
+           (type (or null index) end))
+  (if (streamp file)
+    (progn
+      (unless append (file-position file 0))
+      (write-sequence bytes file :start start :end end))
+    (with-open-file (out file :direction :output
+                              :if-exists (if append
+                                           :append
+                                           :supersede)
+                              :if-does-not-exist :create
+                              :element-type 'octet)
+      (write-sequence bytes out :start start :end end)))
+  file)
+
+(defun string-to-file (string file &key (external-format :latin-1)
+                                        (append t)
+                                        (start 0)
+                                        end)
+  (declare (type string string)
+           (type (or stream string pathname) file)
+           (type index start)
+           (type (or null index) end))
+  (if (streamp file)
+    (progn
+      (unless append (file-position file 0))
+      (write-sequence string file :start start :end end))
+    (with-open-file (out file :direction :output
+                              :if-exists (if append
+                                           :append
+                                           :supersede)
+                              :if-does-not-exist :create
+                              :external-format external-format
+                              :element-type 'character)
+      (write-sequence string out :start start :end end)))
+  file)
+
+(defun lines-to-file (lines file &key (external-format :latin-1)
+                                      (append t))
+  (declare (type list lines)
+           (type (or stream string pathname) file))
+  (if (streamp file)
+    (progn
+      (if append
+        (fresh-line file)
+        (file-position file 0))
+      (format file "~{~a~^~%~}" lines))
+    (with-open-file (out file :direction :output
+                              :if-exists (if append
+                                           :append
+                                           :supersede)
+                              :if-does-not-exist :create
+                              :external-format external-format
+                              :element-type 'character)
+      (when append (fresh-line out))
+      (format out "~{~a~^~%~}" lines)))
+  file)
 
 (defun grep (pattern path &key (external-format :latin-1)
                                (case-sensitive t)

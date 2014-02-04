@@ -102,6 +102,10 @@
    #:file-to-string
    #:file-to-lines
    #:string-to-lines
+   #:lines-to-string
+   #:bytes-to-file
+   #:string-to-file
+   #:lines-to-file
    #:grep
    ))
 
