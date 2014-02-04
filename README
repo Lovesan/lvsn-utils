@@ -1,0 +1,4 @@
+Yet another utils package
+
+Currently, it depends on SBCL, because of symbol, pathname and md5 stuff
+Nevertheless, porters are welcome
